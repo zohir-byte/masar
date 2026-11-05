@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f2f36">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>مَسار</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="vendor/leaflet.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="logo"></span><b>مَسار</b></div>
+  <div class="tabs">
+    <button id="tabPlan" class="tab on">التخطيط</button>
+    <button id="tabDrive" class="tab">القيادة</button>
+  </div>
+</header>
+
+<div id="map"></div>
+
+<main id="planView" class="panel">
+  <section class="card">
+    <div class="row-title">نقطة البداية</div>
+    <div class="seg">
+      <button id="startGps" class="on">📍 موقعي الحالي</button>
+      <button id="startAddr">عنوان</button>
+    </div>
+    <div id="startAddrBox" class="search hidden">
+      <input id="startInput" type="search" placeholder="اكتب عنوان البداية…" autocomplete="off">
+      <div id="startSug" class="sug"></div>
+    </div>
+    <div id="startLabel" class="muted small"></div>
+  </section>
+
+  <section class="card">
+    <div class="row-title">
+      المحطات <span id="count" class="pill">0 / 35</span>
+      <button id="clearAll" class="link danger">مسح الكل</button>
+    </div>
+    <div class="search">
+      <input id="stopInput" type="search" placeholder="ابحث عن عنوان المحطة…" autocomplete="off">
+      <div id="stopSug" class="sug"></div>
+    </div>
+    <div class="tools">
+      <button id="bulkBtn" class="link">+ لصق عدة عناوين</button>
+      <span class="muted small">أو اضغط مطولاً على الخريطة</span>
+    </div>
+    <div id="bulkBox" class="hidden">
+      <textarea id="bulkText" rows="5" placeholder="كل عنوان بسطر، مثلاً:&#10;Hauptstraße 5, 10115 Berlin&#10;Bahnhofstr. 12, München"></textarea>
+      <button id="bulkGo" class="btn small-btn">أضف العناوين</button>
+    </div>
+    <ol id="stopList" class="stops"></ol>
+  </section>
+
+  <section class="card">
+    <div class="row-title">نهاية الجولة</div>
+    <div class="seg">
+      <button id="endBack" class="on">↩ الرجوع للبداية</button>
+      <button id="endFree">الانتهاء عند آخر محطة</button>
+    </div>
+  </section>
+
+  <button id="optimize" class="btn big">رتّب أفضل مسار</button>
+  <div id="summary" class="summary hidden"></div>
+  <button id="toDrive" class="btn big go hidden">ابدأ الجولة 🚗</button>
+  <div class="foot muted small">البيانات © OpenStreetMap · الترتيب عبر OSRM</div>
+</main>
+
+<main id="driveView" class="panel hidden">
+  <div id="driveEmpty" class="card center muted">رتّب المسار أولاً من صفحة التخطيط.</div>
+  <div id="driveBox" class="hidden">
+    <div class="progress"><div id="progBar"></div></div>
+    <div id="progText" class="muted small center"></div>
+    <section class="card current">
+      <div class="muted small">المحطة الحالية</div>
+      <div class="cur-num" id="curNum"></div>
+      <div class="cur-addr" id="curAddr"></div>
+      <button id="navBtn" class="btn big">افتح في Google Maps</button>
+      <button id="doneBtn" class="btn big go">✓ تم التوصيل · التالي</button>
+      <div class="row2">
+        <button id="skipBtn" class="btn ghost">تخطّي</button>
+        <button id="undoBtn" class="btn ghost">تراجع</button>
+      </div>
+    </section>
+    <div class="row-title sub">القائمة</div>
+    <ol id="driveList" class="stops drive"></ol>
+  </div>
+</main>
+
+<div id="toast" class="toast"></div>
+
+<script src="vendor/leaflet.js"></script>
+<script src="solver.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
