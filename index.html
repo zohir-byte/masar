@@ -22,20 +22,32 @@
   </div>
 </header>
 
-<div id="map"></div>
+<div id="mapWrap">
+  <div id="map"></div>
+  <button id="mapToggle" class="map-btn" aria-label="تكبير الخريطة">⤢</button>
+</div>
 
 <main id="planView" class="panel">
   <section class="card">
-    <div class="row-title">نقطة البداية</div>
-    <div class="seg">
-      <button id="startGps" class="on">📍 موقعي الحالي</button>
-      <button id="startAddr">عنوان</button>
+    <div class="opt-row">
+      <span class="opt-label">البداية</span>
+      <div class="seg">
+        <button id="startGps" class="on">📍 موقعي</button>
+        <button id="startAddr">عنوان</button>
+      </div>
     </div>
     <div id="startAddrBox" class="search hidden">
       <input id="startInput" type="search" placeholder="اكتب عنوان البداية…" autocomplete="off">
       <div id="startSug" class="sug"></div>
     </div>
-    <div id="startLabel" class="muted small"></div>
+    <div id="startLabel" class="muted small start-label"></div>
+    <div class="opt-row">
+      <span class="opt-label">النهاية</span>
+      <div class="seg">
+        <button id="endBack" class="on">↩ رجوع للبداية</button>
+        <button id="endFree">عند آخر محطة</button>
+      </div>
+    </div>
   </section>
 
   <section class="card">
@@ -44,59 +56,81 @@
       <button id="clearAll" class="link danger">مسح الكل</button>
     </div>
     <div class="search">
-      <input id="stopInput" type="search" placeholder="ابحث عن عنوان المحطة…" autocomplete="off">
+      <input id="stopInput" type="search" placeholder="🔍 ابحث عن عنوان…" autocomplete="off">
       <div id="stopSug" class="sug"></div>
     </div>
-    <div class="tools">
-      <button id="bulkBtn" class="link">+ لصق عدة عناوين</button>
-      <span class="muted small">أو اضغط مطولاً على الخريطة</span>
+    <div class="chips">
+      <button id="bookBtn" class="chip">📒 العناوين المحفوظة</button>
+      <button id="repeatBtn" class="chip">🔁 آخر جولة</button>
+      <button id="bulkBtn" class="chip">📋 لصق عناوين</button>
     </div>
     <div id="bulkBox" class="hidden">
       <textarea id="bulkText" rows="5" placeholder="كل عنوان بسطر، مثلاً:&#10;Hauptstraße 5, 10115 Berlin&#10;Bahnhofstr. 12, München"></textarea>
       <button id="bulkGo" class="btn small-btn">أضف العناوين</button>
     </div>
     <ol id="stopList" class="stops"></ol>
+    <div class="muted small hint">💡 تقدر تضيف محطة بضغطة مطوّلة على الخريطة</div>
   </section>
 
-  <section class="card">
-    <div class="row-title">نهاية الجولة</div>
-    <div class="seg">
-      <button id="endBack" class="on">↩ الرجوع للبداية</button>
-      <button id="endFree">الانتهاء عند آخر محطة</button>
+  <div class="foot muted small">البيانات © OpenStreetMap · الطرق عبر OSRM</div>
+
+  <div class="bar">
+    <div id="summary" class="summary hidden"></div>
+    <div class="bar-btns">
+      <button id="optimize" class="btn big">رتّب أفضل مسار</button>
+      <button id="toDrive" class="btn big go hidden">ابدأ الجولة 🚗</button>
     </div>
-  </section>
-
-  <button id="optimize" class="btn big">رتّب أفضل مسار</button>
-  <div id="summary" class="summary hidden"></div>
-  <button id="toDrive" class="btn big go hidden">ابدأ الجولة 🚗</button>
-  <div class="foot muted small">البيانات © OpenStreetMap · الترتيب عبر OSRM</div>
+  </div>
 </main>
 
 <main id="driveView" class="panel hidden">
   <div id="driveEmpty" class="card center muted">رتّب المسار أولاً من صفحة التخطيط.</div>
   <div id="driveBox" class="hidden">
+    <div class="stats">
+      <div><b id="kmTotal">–</b><span>المسار كله</span></div>
+      <div><b id="kmLeft">–</b><span>الباقي</span></div>
+      <div><b id="doneCount">–</b><span>تم</span></div>
+    </div>
     <div class="progress"><div id="progBar"></div></div>
-    <div id="progText" class="muted small center"></div>
+
+    <button id="notifBtn" class="notif-tip hidden">🔔 فعّل الإشعار لتكبس «تم التوصيل» وانت بـ Google Maps</button>
+
     <section class="card current">
-      <div class="muted small">المحطة الحالية</div>
-      <div class="cur-num" id="curNum"></div>
-      <div class="cur-addr" id="curAddr"></div>
-      <button id="navBtn" class="btn big">افتح في Google Maps</button>
+      <div class="cur-head"><span class="cur-num" id="curNum"></span><div class="cur-addr" id="curAddr"></div></div>
+      <button id="navBtn" class="btn big">🧭 افتح في Google Maps</button>
       <button id="doneBtn" class="btn big go">✓ تم التوصيل · التالي</button>
       <div class="row2">
         <button id="skipBtn" class="btn ghost">تخطّي</button>
-        <button id="undoBtn" class="btn ghost">تراجع</button>
+        <button id="undoBtn" class="btn ghost">↶ تراجع</button>
       </div>
+      <button id="newRound" class="btn ghost hidden">جولة جديدة</button>
     </section>
-    <div class="row-title sub">القائمة</div>
+    <div class="row-title sub">ترتيب الجولة</div>
     <ol id="driveList" class="stops drive"></ol>
   </div>
 </main>
+
+<div id="bookSheet" class="sheet hidden">
+  <div class="sheet-box">
+    <div class="sheet-head">
+      <b>العناوين المحفوظة</b>
+      <button id="bookClose" class="x" aria-label="إغلاق">✕</button>
+    </div>
+    <input id="bookFilter" type="search" placeholder="🔍 فلترة…" autocomplete="off">
+    <div class="sheet-tools">
+      <button id="bookAll" class="link">تحديد الكل</button>
+      <span id="bookInfo" class="muted small"></span>
+    </div>
+    <ul id="bookList" class="book"></ul>
+    <button id="bookAdd" class="btn big">أضف المحدّد</button>
+  </div>
+</div>
 
 <div id="toast" class="toast"></div>
 
 <script src="vendor/leaflet.js"></script>
 <script src="solver.js"></script>
+<script src="store.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
