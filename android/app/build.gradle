@@ -10,8 +10,8 @@ android {
         applicationId 'de.zohir.masar'
         minSdk 26
         targetSdk 34
-        versionCode (System.getenv('BUILD_NUMBER') ?: '1').toInteger()
-        versionName "1." + (System.getenv('BUILD_NUMBER') ?: '0')
+        versionCode = Integer.parseInt(System.getenv('BUILD_NUMBER') ?: '1')
+        versionName = '1.' + (System.getenv('BUILD_NUMBER') ?: '0')
     }
 
     signingConfigs {
