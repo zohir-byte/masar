@@ -8,6 +8,8 @@
   const NOMINATIM = 'https://nominatim.openstreetmap.org';
   const KEY = 'masar.v1';
   const S = window.MasarStore;
+  const NATIVE = window.MasarNative || null; // set inside the Android app
+  let pendingBubble = false;
 
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -57,10 +59,15 @@
       status: state.drive.status, history: state.drive.history, updated: state.drive.updated || 0
     };
   }
-  function pushSnap() { try { S.set('drive', buildSnap()).catch(() => {}); } catch (e) {} }
+  function pushSnap() {
+    const snap = buildSnap();
+    try { S.set('drive', snap).catch(() => {}); } catch (e) {}
+    if (NATIVE && state.driving && snap) { try { NATIVE.updateDrive(JSON.stringify(snap)); } catch (e) {} }
+  }
   async function pullSnap() {
     if (!state.plan) return;
-    let snap; try { snap = await S.get('drive'); } catch (e) { return; }
+    let snap;
+    try { snap = NATIVE ? JSON.parse(NATIVE.getDrive() || 'null') : await S.get('drive'); } catch (e) { return; }
     if (!snap || !snap.stops || (snap.updated || 0) <= (state.drive.updated || 0)) return;
     const ids = state.plan.order.join(',');
     if (snap.stops.map((s) => s.id).join(',') !== ids) return;
@@ -70,13 +77,27 @@
   }
   document.addEventListener('visibilitychange', () => { if (!document.hidden) pullSnap(); });
   window.addEventListener('focus', pullSnap);
+  // Android app: called when the app comes back to the front
+  window.masarNativeSync = async () => {
+    await pullSnap();
+    if (NATIVE && pendingBubble && state.driving && state.plan && NATIVE.canOverlay()) {
+      pendingBubble = false; NATIVE.startDrive(JSON.stringify(buildSnap()));
+    }
+    render();
+  };
+  function startBubble() {
+    if (!NATIVE || !state.plan) return;
+    const ok = NATIVE.startDrive(JSON.stringify(buildSnap()));
+    if (!ok) { pendingBubble = true; toast('فعّل «الظهور فوق التطبيقات» لـ مَسار، وبعدين ارجع للتطبيق', 5000); }
+    setTimeout(render, 600);
+  }
 
   let swReg = null;
   if ('serviceWorker' in navigator && window.isSecureContext) {
     navigator.serviceWorker.register('sw.js').then((r) => { swReg = r; }).catch(() => {});
     navigator.serviceWorker.addEventListener('message', (e) => { if (e.data && e.data.type === 'masar-sync') pullSnap(); });
   }
-  const notifSupported = () => 'Notification' in window && 'serviceWorker' in navigator && window.isSecureContext;
+  const notifSupported = () => !NATIVE && 'Notification' in window && 'serviceWorker' in navigator && window.isSecureContext;
   async function getReg() { return swReg || (await navigator.serviceWorker.ready); }
   async function showNotif() {
     if (!notifSupported() || Notification.permission !== 'granted' || !state.plan) return;
@@ -94,7 +115,7 @@
     else toast('الإشعارات مرفوضة. فعّلها من إعدادات الهاتف ← التطبيقات ← مَسار', 5000);
     render();
   }
-  $('notifBtn').onclick = askNotif;
+  $('notifBtn').onclick = () => (NATIVE ? startBubble() : askNotif());
 
   // ---------- map ----------
   const map = L.map('map', { zoomControl: false, attributionControl: true }).setView([51.16, 10.45], 6);
@@ -217,6 +238,8 @@
     const had = !!state.plan;
     state.plan = null; routeLine = null; state.drive = { status: {}, history: [], updated: 0 };
     if (had) clearNotif();
+    if (state.driving && NATIVE) { try { NATIVE.stopDrive(); } catch (e) {} }
+    state.driving = false;
   }
   function addStop(s, opts) {
     opts = opts || {};
@@ -426,6 +449,7 @@
     return orderedStops().find((s) => !state.drive.status[s.id]) || null;
   }
   function openMaps(p) {
+    if (NATIVE) { NATIVE.openNav(p.lat, p.lon); return; }
     const a = document.createElement('a'); a.href = S.mapsUrl(p); a.target = '_blank'; a.rel = 'noopener';
     document.body.appendChild(a); a.click(); a.remove();
   }
@@ -466,9 +490,11 @@
   $('tabDrive').onclick = () => { showTab('drive'); pullSnap(); };
   $('toDrive').onclick = async () => {
     state.lastRound = state.stops.map((s) => ({ lat: s.lat, lon: s.lon, label: s.label, sub: s.sub }));
+    state.driving = true;
     save(); showTab('drive');
     const c = currentStop(); if (c) map.setView([c.lat, c.lon], 14);
-    if (notifSupported() && Notification.permission === 'default') await askNotif();
+    if (NATIVE) startBubble();
+    else if (notifSupported() && Notification.permission === 'default') await askNotif();
     else showNotif();
   };
 
@@ -519,7 +545,14 @@
     $('kmLeft').textContent = fmtKm(S.remainingM(snap));
     $('doneCount').textContent = doneN + ' / ' + ord.length;
     $('progBar').style.width = (ord.length ? (handled / ord.length) * 100 : 0) + '%';
-    $('notifBtn').classList.toggle('hidden', !(notifSupported() && Notification.permission !== 'granted'));
+    if (NATIVE) {
+      let show = false;
+      try {
+        if (!NATIVE.canOverlay()) { show = true; $('notifBtn').textContent = '🟢 فعّل الفقاعة العائمة فوق Google Maps'; }
+        else if (state.driving && currentStop() && !NATIVE.bubbleRunning()) { show = true; $('notifBtn').textContent = '🟢 أظهر فقاعة «تم التوصيل»'; }
+      } catch (e) {}
+      $('notifBtn').classList.toggle('hidden', !show);
+    } else $('notifBtn').classList.toggle('hidden', !(notifSupported() && Notification.permission !== 'granted'));
 
     const cur = currentStop();
     $('navBtn').classList.remove('hidden');

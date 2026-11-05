@@ -1,0 +1,68 @@
+name: Build Android app
+
+on:
+  push:
+    branches: [main]
+    paths: ['android/**', '.github/workflows/android.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      # Signing key: from the repo secret MASAR_KEYSTORE (base64) + MASAR_KS_PASS if set,
+      # otherwise a fresh key for this build only.
+      - name: Prepare signing key
+        env:
+          KS_B64: ${{ secrets.MASAR_KEYSTORE }}
+          KS_SECRET_PASS: ${{ secrets.MASAR_KS_PASS }}
+        run: |
+          KS="$RUNNER_TEMP/masar.keystore"
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > "$KS"
+            PASS="$KS_SECRET_PASS"
+          else
+            PASS="$(openssl rand -hex 16)"
+            keytool -genkeypair -keystore "$KS" -alias masar -keyalg RSA -keysize 2048 \
+              -validity 20000 -storepass "$PASS" -keypass "$PASS" -dname "CN=Masar"
+          fi
+          echo "::add-mask::$PASS"
+          echo "KS_FILE=$KS" >> "$GITHUB_ENV"
+          echo "KS_PASS=$PASS" >> "$GITHUB_ENV"
+
+      - name: Build APK
+        working-directory: android
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: gradle assembleRelease --no-daemon --stacktrace
+
+      - name: Rename APK
+        run: cp android/app/build/outputs/apk/release/app-release.apk masar.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: masar-apk
+          path: masar.apk
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.${{ github.run_number }}
+          name: Masar 1.${{ github.run_number }}
+          body: "حمّل ملف masar.apk وثبّته على هاتفك."
+          files: masar.apk
+          make_latest: true
